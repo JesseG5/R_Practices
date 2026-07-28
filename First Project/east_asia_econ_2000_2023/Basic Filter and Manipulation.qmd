@@ -1,0 +1,143 @@
+---
+title: "East Asia Economics First Project"
+format: html
+---
+```{r}
+library(dplyr)
+```
+
+
+
+```{r}
+macro_data <- read.csv("east_asia_econ_2000_2023.csv")
+```
+
+# Question 1
+# Load the dataset into an object called macro_data. What command would you use to find the exact number of rows and columns, and what command would you use to print just the names of the variables?
+
+
+```{r}
+dim(macro_data)
+```
+
+# Answer: dim
+
+# Question 2. Basic Filtering
+# Create a new data frame called china_recent that only includes data for China in years greater than or equal to 2015. How many rows are in this new data frame?
+
+```{r}
+china_recent <- macro_data %>%
+    filter(country == "China", year >= 2015)
+nrow(china_recent)
+```
+
+# Question 2 Answer: 9
+
+# Question 3 Logical Operators (OR)
+#Suppose you are analyzing economies heavily impacted by early 2000s tech shocks. Filter macro_data to create a dataset containing only observations from Japan OR South Korea. Save it as tech_economies.
+
+```{r}
+tech_economies <- macro_data %>%
+    filter(country == "Japan" | country == "South Korea")
+```
+
+```{r}
+View(tech_economies)
+```
+
+# Question 4. Logical Operators (AND)
+# Filter the dataset for years where a country experienced a recession (defined as gdp_growth < 0) AND had an inflation rate above 2.0%.
+```{r}
+recession <- macro_data %>%
+    filter(gdp_growth < 0, inflation_rate > 2.0)
+```
+
+```{r}
+View(recession)
+```
+
+# Question 4 Answer: No countries experienced a gdp_growth under 0 while having an inflation rate above 2.0%.
+# Question 4 meaning: This could be for a variety of reasons, as countries undergo recession the currency becomes more valuable meaning the inflation rate drops since that is inversely related to the demand of money in circulation.
+
+# Question 1.1
+# To analyze the impact of the 2008 US financial crisis on East Asian exports, you only need a few columns. Use the select() function to create a dataset named crisis_analysis that contains only the country, year, and gdp_growth columns.
+
+```{r}
+crisis_analysis <- macro_data %>%
+    select(country, year, gdp_growth)
+```
+
+# Question 2.1
+# Building on basic filtering, analyze the period immediately following China's entry into the WTO. Filter macro_data for observations where country == "China" and the year is between 2001 and 2006. (You can use logical operators like >= and <= together, or the between() function).
+
+```{r}
+China_wto_entry <- macro_data %>%
+    filter(country == "China", year <= 2006, year >= 2001)
+```
+
+#If I wanted to use the "between" function I could use
+```{r}
+China_wto_entry <- macro_data %>%
+  filter(country == "China", between(year, 2001, 2006))
+```
+
+# Question 3.1
+# Logical Negation (NOT)Instead of selecting specific economies, suppose you need to exclude Japan from your model. Filter the dataset to include all countries except "Japan" using the != operator. Save it as ex_japan.
+
+```{r}
+Not_Japan_data_1 <- macro_data %>%
+    filter(country != "Japan")
+```
+
+# Question 4.1
+# Multiple Logical ConditionsFilter the dataset for years where South Korea or Japan experienced moderate growth ($gdp\_growth \ge 2.0$) while maintaining low inflation ($inflation\_rate \le 1.5$).
+
+```{r}
+South_Japan_Growth <- macro_data %>%
+    filter(gdp_growth > 2.0, inflation_rate < 1.5, country == "South Korea" | country == "Japan")
+```
+
+
+# Question 1.2 
+# Data Dimensions & Counts How complete is your data across economies? Use the count() function on the country column in macro_data to verify exactly how many years of data exist for each economy.
+
+```{r}
+macro_data %>%
+    count(country)
+```
+
+# Question 2.2
+# Creating New Variables (Mutate)To gauge aggregate economic distress across your filtered subsets, use mutate() on macro_data to create a new column called misery_index defined as $Misery = Inflation + Unemployment$. (Assume your dataset includes an unemployment_rate column). Save this as macro_expanded.
+
+```{r}
+macro_expanded <- macro_data %>%
+    mutate(misery_index = inflation_rate + unemployment_rate)
+```
+
+# Question 3.2
+# Sorting Data (Arrange)To study the peak of regional growth, sort macro_data by gdp_growth in descending order using arrange() and desc(). Which economy and year record the highest growth rate?
+
+```{r}
+macro_data %>%
+    arrange(desc(gdp_growth))
+```
+
+# Question 3.2 Answer: China had the highest growth rate at 14.2% in 2007
+
+# Question 4.2
+# Summarizing AggregatesCalculate the overall average economic growth across all observations using summarize() and mean(gdp_growth, na.rm = TRUE).
+
+```{r}
+macro_data %>%
+    summarize(avg_growth = mean(gdp_growth, na.rm = TRUE))
+```
+#Learned from this that the summarize command must have mean or sd or min or mix within it, basically it must have a calculation command within it in order to function and that is how it is different from just a standard, View, or mutate command
+
+# Question 1.3
+# Grouped SummariesCompare long-term price stability across the region. Group macro_data by country using group_by(), then use summarize() to calculate the average inflation_rate for each individual economy over the 2000–2023 period.
+
+```{r}
+macro_data %>%
+    group_by(country) %>%
+    summarize(mean(inflation_rate))
+```
