@@ -1,0 +1,143 @@
+---
+title: "global_innovation_data"
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+```{r}
+install.packages("tidyverse")
+library(tidyverse)
+```
+
+```{r}
+innovation_data <- read_csv("global_innovation_data.csv")
+glimpse(innovation_data)
+```
+
+# Basic Scatterplots
+# Question 1
+# Is there a relationship between R&D spending and actual innovation output? Use ggplot() to create a scatterplot (geom_point()) with rd_spending_bln on the x-axis and patents_filed on the y-axis.
+
+```{r}
+innovation_data %>%
+    ggplot(aes(x = rd_spending_bln, y = patents_filed)) + geom_point()
+```
+# Yes there is a relationship, as R&D spending increases it is positively correlated with the number of patents filed.
+
+# Question 2
+# Copy your code from Question 1. Inside the aes() mapping, set color = region to color the points by continent. Then, add size = high_tech_exports_bln to make the size of the dots represent the volume of high-tech exports. What regional pattern do you immediately notice?
+```{r}
+innovation_data %>%
+    ggplot(aes(color = region, size = high_tech_exports_bln, x = rd_spending_bln, y = patents_filed)) + geom_point()
+```
+
+# I notice that as patents filled increases so does high tech exports BLN
+
+# Question 3
+# Let's look at the distribution of manufacturing growth globally. Create a histogram of manufacturing_growth. Try setting binwidth = 1, and then try binwidth = 5. How does changing the binwidth alter your interpretation of the data?
+
+```{r}
+innovation_data %>%
+    ggplot(aes(x = manufacturing_growth)) + geom_histogram(binwidth = 1)
+```
+
+```{r}
+innovation_data %>%
+    ggplot(aes(x = manufacturing_growth)) + geom_histogram(binwidth = 5)
+```
+
+# By changing the binwidth to 5 there is an argument to be made that the data is bimodal with the second group after a manufacturing growth of 5 is smaller than the main group from 0 - 2.5
+
+# Question 4
+# Create a boxplot (geom_boxplot()) comparing researchers_per_1k across different countries. Put country on the x-axis.
+# Challenge: By default, R alphabetizes the x-axis. Try mapping the x-axis like this: aes(x = reorder(country, researchers_per_1k, median)). How does this improve the chart?
+
+```{r}
+innovation_data %>%
+    ggplot(aes(x = country, y = researchers_per_1k)) + geom_boxplot()
+```
+
+```{r}
+innovation_data %>%
+    ggplot(aes(x = reorder(country, researchers_per_1k, median), y = researchers_per_1k)) + 
+    geom_boxplot()
+```
+
+# This improves the box plot by showing us the rank of each country and where exactly they fall compared to the next down or up
+
+# Question 5
+# Sometimes plotting everything on one graph is too messy. Create a line plot (geom_line()) of patents_filed over year. Instead of putting all countries on one graph, add + facet_wrap(~country) to generate a separate mini-graph for each country.
+
+```{r}
+innovation_data %>%
+    ggplot(aes(x = country, y = patents_filed)) +
+    geom_line()
+```
+
+```{r}
+innovation_data %>%
+    ggplot(aes(x = year, y = patents_filed)) +
+    geom_line() +
+facet_wrap(~country)
+```
+
+# Question 6
+# Create a scatterplot of researchers_per_1k on the x-axis and rd_spending_bln on the y-axis. Map color = region and size = patents_filed. What relationship do you observe between researcher concentration and total spending?
+
+```{r}
+innovation_data %>%
+    ggplot(aes(x = researchers_per_1k, y = rd_spending_bln, color = region, size = patents_filed)) +
+    geom_point()
+```
+
+# We see that as North America increases its research spending in the blns the amount of researchers also do but it doesnt lead to exponentially more patents being filed, we do see that in order to file those patents in north America it takes more research spending than in most asian countries as we see at the bottom of the graph.
+
+# Question 7
+# Create a line plot showing rd_spending_bln on the y-axis over year on the x-axis. Inside aes(), set color = country so each nation gets its own colored line. Which country consistently leads in R&D spending growth over the entire 15-year period?
+
+```{r}
+innovation_data %>%
+    ggplot(aes(x = year, y = rd_spending_bln, color = country)) +
+    geom_line()
+```
+
+# I had to use a filter clause in order to distinguish each line but after doing so, we saw that the United States had consistently led from the beginning until around 2021 when China surpassed them, what is important is that the USA did not reduce its spending, rather China highly increased its own according to this information.
+
+# Question 8
+# Create a histogram of high_tech_exports_bln. Try binwidth = 20, and then try binwidth = 100. How does increasing the binwidth to 100 group countries together and change how you perceive export volume peaks?
+
+```{r}
+innovation_data %>%
+    ggplot(aes(x = high_tech_exports_bln, color = country)) +
+    geom_histogram(binwidth = 20)
+```
+
+```{r}
+innovation_data %>%
+    ggplot(aes(x = high_tech_exports_bln, color = country)) +
+    geom_histogram(binwidth = 100)
+```
+
+# We see that most country are trapped around 200 high tech exports with China being one of the only to break that group and they break it heavily.
+
+# Question 9
+# Create a boxplot of manufacturing_growth (y-axis) grouped by region (x-axis). Use reorder(region, manufacturing_growth, median) on the x-axis to sort the regions from lowest median growth to highest median growth. Which region displays the widest spread (variance) in manufacturing growth?
+
+```{r}
+innovation_data %>%
+    ggplot(aes(y = manufacturing_growth, x = reorder(region, manufacturing_growth, median))) +
+    geom_boxplot()
+```
+
+# Asia shows the widest variance in manufacturing growth.
+
+# Question 10
+#  Create a scatterplot comparing rd_spending_bln (x-axis) to high_tech_exports_bln (y-axis). Add + facet_wrap(~region) to break the chart into separate mini scatterplots for each region.
+
+```{r}
+innovation_data %>%
+    ggplot(aes(x = rd_spending_bln, y = high_tech_exports_bln)) +
+    geom_point() +
+    facet_wrap(~region)
