@@ -1,0 +1,184 @@
+``` {r}
+library(tidyverse)
+
+# 1. Generate 204 rows of macroeconomic data (1973-2023 for 4 countries)
+set.seed(42)
+macro_econ_data <- expand_grid(
+  country = c("China", "South Korea", "United States", "Japan"),
+  year = 1973:2023
+) %>%
+  mutate(
+    # Simulate historical GDP growth percentages
+    gdp_growth_pct = case_when(
+      country == "China" & year < 2010 ~ rnorm(n(), 9.5, 1.5),
+      country == "China" & year >= 2010 ~ rnorm(n(), 6.0, 1.0),
+      country == "South Korea" & year < 1997 ~ rnorm(n(), 8.0, 2.0),
+      country == "South Korea" & year >= 1997 ~ rnorm(n(), 3.5, 1.5),
+      country == "United States" ~ rnorm(n(), 2.5, 1.5),
+      country == "Japan" & year < 1992 ~ rnorm(n(), 5.0, 1.5),
+      TRUE ~ rnorm(n(), 1.0, 1.0)
+    ),
+    # Simulate export volumes based on historical scaling
+    export_vol_bln = case_when(
+      country == "United States" ~ (year - 1970) * 35 + rnorm(n(), 50, 20),
+      country == "China" ~ (year - 1970)^2 * 0.8 + rnorm(n(), 20, 10),
+      country == "South Korea" ~ (year - 1970) * 15 + rnorm(n(), 10, 5),
+      TRUE ~ (year - 1970) * 18 + rnorm(n(), 15, 5)
+    ),
+    # Simulate central bank interest rates
+    interest_rate = case_when(
+      year < 1990 ~ rnorm(n(), 8, 2),
+      year >= 1990 & year < 2008 ~ rnorm(n(), 4, 1.5),
+      TRUE ~ rnorm(n(), 1.5, 1)
+    ),
+    # Simulate housing index climbing over time
+    housing_price_idx = (year - 1970) * 2.5 + rnorm(n(), 10, 5) + (export_vol_bln * 0.05)
+  ) %>%
+  mutate(across(where(is.numeric), ~round(.x, 2))) # Round everything to 2 decimals
+
+# 2. Save it permanently as a CSV in your VS Code folder
+write_csv(macro_econ_data, "macro_econ_data.csv")
+
+# 3. Preview the first few rows
+glimpse(macro_econ_data)
+```
+
+# Question 1 Filtering into Plots: You don't always have to save new datasets. Write a pipeline (%>%) that takes macro_econ_data, filter()s for only the year 2023, and pipes directly into ggplot() to create a bar chart (geom_col()) showing export_vol_bln (y-axis) for each country (x-axis).
+
+#Discovered that first I needed to run these library commands since %>%, the pipeline command is tied to dplyr and of course geomotry is tied to ggplot2
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+macro_econ_data %>%
+    filter(year == 2023) %>%
+    ggplot(aes(x = country, y = export_vol_bln)) +
+    geom_col()
+```
+
+# We see here for question 1 that for the year 2023 China had the largest export volume at 2500 bln whereas Korea's was 750 bln
+
+# Question 2 Adding Statistical Trendlines: Filter the dataset for only "South Korea" and "United States". Pipe this into a scatterplot comparing interest_rate (x) to housing_price_idx (y). Add + geom_smooth(method = "lm", se = FALSE) to draw a linear trendline. Does a higher interest rate correlate with higher or lower housing prices?
+```{r}
+macro_econ_data %>%
+    filter(country == "South Korea" | country == "United States") %>%
+    ggplot(aes(x = interest_rate, y = housing_price_idx)) +
+    geom_smooth(lm.se = FALSE) +
+    geom_point()
+```
+# This gave me a line which was curved and was not a OLS regression, rather it seemed to follow the pattern of the dots?
+# Learned geom_smooth by itself just leads to the line I was given, with the gray being the 95% confidence interval and it shows flattening out of the housing price index after the interest rate goes over 9.
+
+```{r}
+macro_econ_data %>%
+    filter(country == "South Korea" | country == "United States") %>%
+    ggplot(aes(x = interest_rate, y = housing_price_idx)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE)
+```
+
+# a higher interest rate does indeed correlate with lower housing prices, this could mean that the homeowner is forced to lower their prices due to the borrower having the same amount of money to give yet it is pulled up by a mandatory fee— the interest rate.
+
+# Question 3 
+# Histograms & Subsetting: Create a pipeline that filters for "China" and pipes into ggplot() to create a histogram of gdp_growth_pct. Try binwidth = 1, and then try binwidth = 2.5.
+```{r}
+macro_econ_data %>%
+    filter(country == "China") %>%
+    ggplot(aes(x = gdp_growth_pct)) +
+    geom_histogram(binwidth = 1)
+```
+
+```{r}
+macro_econ_data %>%
+    filter(country == "China") %>%
+    ggplot(aes(x = gdp_growth_pct)) +
+    geom_histogram(binwidth = 2.5)
+```
+
+# What question 3 shows us is that when we look at the gdp_growth_pct of China the most commond gdp_growth_pct is between 6-9% with the next being between 9-11%
+
+# Question 4
+ # 4. Advanced Mutate + Plotting: Let's measure how effectively growth translates to trade. Create a pipeline that uses mutate() to create a new variable called export_efficiency (calculated as export_vol_bln / gdp_growth_pct). Filter the data for "South Korea", then pipe it into a line plot (geom_line()) showing this new variable over year.
+
+ ```{r}
+ macro_econ_data %>%
+    mutate(export_efficiency = export_vol_bln / gdp_growth_pct) %>%
+    filter(country == "South Korea") %>%
+    ggplot(aes(x = year, y = export_efficiency)) +
+    geom_line()
+```    
+
+# We see that over the years South Korea's export efficiency has gone up from around zero to 400, for some reason, it skyrocketed around 1998, this is around the asian financial crisis, what could cause this is if the gdp_growth_pct got very close to zero but did not hit it.
+
+# Question 5
+# 5. Boxplots & Factor Reordering: Create a boxplot (geom_boxplot()) comparing housing_price_idx across the different countries. Map the x-axis using aes(x = reorder(country, housing_price_idx, median)) to sort the countries from lowest to highest median housing index.
+
+```{r}
+macro_econ_data %>%
+    ggplot(aes(y = housing_price_idx, x = reorder(country, housing_price_idx, median))) +
+    geom_boxplot()
+```
+
+# This data showed that the united states had the highest median housing price idx however, they had less IQR variation from 1 to 3 than China, whose median was lower, but the highest IQR was on the same level as the United States with the lowest falling lower than the US meaning China's housing economy has more diversity in housing prices yet on average has a lower price idx
+
+# Question 6
+# 6. Mutating Categorical Data: Use mutate() and ifelse() to create a new column called growth_status which equals "High" if gdp_growth_pct > 5 and "Low" otherwise. Pipe this straight into a geom_bar() to count how many high-growth vs. low-growth years each country had.
+
+```{r}
+macro_econ_data %>%
+    mutate(growth_status = ifelse(gdp_growth_pct > 5, "High", "Low")) %>%
+    ggplot(aes(x = growth_status)) +
+    geom_bar() +
+    facet_wrap(~country)
+```
+#Forgot to add the facet wrap, besides that all the code was good, China had mostly all high growth, Japan was the oppossite, South Korea was half and half and the United States was mostly low growth.
+
+
+
+# Question 7
+# We want to see the trajectory of export_vol_bln over year for every nation individually. Create a line chart (geom_line()) and add + facet_wrap(~country) to generate a separate mini-graph for each economy.
+
+```{r}
+macro_econ_data %>%
+  ggplot(aes(x = year, y = export_vol_bln)) +
+  geom_line() +
+  facet_wrap(~country)
+```
+
+# Question 8
+# Filter the dataset for years after 2000 (year > 2000). Produce a single chart showing how housing_price_idx evolves over year for each country. The final visualization should display both the individual yearly observations as dots and continuous trend lines connecting them, with each country clearly distinguished by color.
+
+```{r}
+macro_econ_data %>%
+  filter(year > 2000) %>%
+  ggplot(aes(x = year,y = housing_price_idx, color = country)) +
+  geom_point() +
+  geom_line()
+```
+# learned here that geom_dot is not a command, rather it must be geom_point(). Also learned that under the aes code, you must state color = first and not after, you cannot say which data set then how it is sorted rather you must say how it is distringuished first
+
+
+# Question 9
+# Construct a scatterplot that displays gdp_growth_pct over year. Differentiate each country by color, and make the physical size of each data point reflect that year's export volume (export_vol_bln). Based on the resulting plot, what trend do you observe regarding export volumes as time progresses?
+
+```{r}
+macro_econ_data %>%
+  ggplot(aes(x = year, y = gdp_growth_pct, color = country, size = export_vol_bln)) +
+  geom_point()
+```
+
+# As time increases so does export volume on average among the measured countries.
+
+# Question 10
+# Calculate a new variable called housing_to_export_ratio representing housing price index relative to export volume (housing_price_idx / export_vol_bln).
+# Plot this ratio over time, with countries distinguished by color.
+# Display both the scatter points and smooth, non-linear trendlines (without shaded confidence intervals) for each country to visualize their macroeconomic trajectories.
+
+```{r}
+macro_econ_data %>%
+  mutate(housing_to_export_ratio = housing_price_idx / export_vol_bln) %>%
+  ggplot(aes(x = year, y = housing_to_export_ratio, color = country)) +
+  geom_point() + facet_wrap(~country) +geom_smooth()
+```
