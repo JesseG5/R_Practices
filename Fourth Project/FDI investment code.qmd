@@ -1,0 +1,286 @@
+---
+title: "FDI project"
+format: html
+---
+
+```{r}
+library(tidyverse)
+
+set.seed(101)
+
+advanced_macro_data <- expand_grid(
+  country = c("China", "South Korea", "United States", "Japan", "Taiwan"),
+  year = 1980:2025
+) %>%
+  mutate(
+    # Simulate Foreign Direct Investment with some variance
+    fdi_bln = case_when(
+      country == "China" & year > 2000 ~ (year - 2000)^1.5 * 10 + rnorm(n(), 50, 20),
+      country == "United States" ~ (year - 1980) * 12 + rnorm(n(), 100, 30),
+      TRUE ~ (year - 1980) * 5 + rnorm(n(), 20, 10)
+    ),
+    # Simulate Unemployment Rate (spiking during known crises)
+    unemployment_rate = case_when(
+      country == "South Korea" & year %in% 1997:1999 ~ rnorm(n(), 7.5, 1),
+      country == "United States" & year %in% c(2008, 2009, 2010, 2020) ~ rnorm(n(), 8.5, 1.5),
+      TRUE ~ rnorm(n(), 4.0, 1.2)
+    ),
+    # Simulate Inflation - introducing NA values randomly to force data cleaning
+    inflation_rate = rnorm(n(), 3.0, 2.5),
+    # Simulate Government Debt as % of GDP
+    gov_debt_pct = case_when(
+      country == "Japan" ~ (year - 1980) * 4 + 50 + rnorm(n(), 10, 5),
+      country == "United States" & year > 2000 ~ (year - 2000) * 3 + 60 + rnorm(n(), 5, 5),
+      TRUE ~ (year - 1980) * 1.5 + 20 + rnorm(n(), 5, 5)
+    ),
+    # Simulate Tech Exports
+    tech_exports_bln = if_else(
+      country %in% c("South Korea", "Taiwan", "China") & year > 1995,
+      (year - 1995)^2 * 1.2 + rnorm(n(), 10, 5),
+      (year - 1980) * 2 + rnorm(n(), 5, 2)
+    ),
+    # Add a messy text column mimicking qualitative analyst notes
+    analyst_note = sample(
+      c(" stable_growth ", "CRISIS_watch", "recession Warning", " steady ", NA), 
+      size = n(), replace = TRUE, prob = c(0.4, 0.1, 0.1, 0.3, 0.1)
+    )
+  ) %>%
+  # Introduce random missing values (NAs) in inflation to practice cleaning
+  mutate(inflation_rate = ifelse(runif(n()) < 0.1, NA, inflation_rate)) %>%
+  # Round numerics
+  mutate(across(where(is.numeric) & !matches("year"), ~round(.x, 2)))
+
+# Save to your working directory
+write_csv(advanced_macro_data, "advanced_macro_data.csv")
+```
+
+# Question 1
+# Calculate the all-time average and standard deviation of fdi_bln for each country. Your final output should be a small table with three columns: the country, the average FDI, and the standard deviation. Sort this table so the country with the highest average FDI is at the top.
+
+```{r}
+advanced_macro_data %>%
+    group_by(country) %>%
+    summarize(
+        avg_fdi = mean(fdi_bln, na.rm = TRUE),
+        sd_fdi = sd(fdi_bln, na.rm = TRUE)
+    ) %>%
+    arrange(desc(avg_fdi))
+```
+
+# Question 1.2
+# Calculate the average and median gov_debt_pct for each country in advanced_macro_data. Output a table with three columns: the country, average debt, and median debt. Sort the output so the nation with the lowest median debt appears at the top.
+
+```{r}
+advanced_macro_data %>%
+    group_by(country) %>%
+    summarize(
+        avg_debt = mean(gov_debt_pct, na.rm = TRUE),
+        med_debt = median(gov_debt_pct, na.rm = TRUE)
+    ) %>%
+    arrange(desc(med_debt))
+```
+
+# Question 2
+# Find the maximum unemployment_rate recorded for each country, and the specific year that maximum occurred. Hint: You want to filter rows based on a group maximum, not just summarize.
+
+```{r}
+advanced_macro_data %>%
+    group_by(country) %>%
+    filter(unemployment_rate == max(unemployment_rate, na.rm = TRUE)) %>%
+    select(country, year, unemployment_rate)
+```
+
+# Question 2.2
+# Find the specific year each country recorded its peak fdi_bln value. Output a table containing only the country, year, and fdi_bln columns, sorted so the overall highest FDI peak across all nations appears at the top.
+
+```{r}
+advanced_macro_data %>%
+    group_by(country) %>%
+    filter(fdi_bln == max(fdi_bln, na.rm = TRUE)) %>%
+    select(country, year, fdi_bln) %>%
+    arrange(desc(fdi_bln))
+```
+
+# Question 3 
+# Group the data by country. In a single pipeline, count how many missing values (NA) exist in the inflation_rate column for each nation.
+
+```{r}
+advanced_macro_data %>%
+    group_by(country) %>%
+    summarize(missing_inflation_count = sum(is.na(inflation_rate))) %>%
+    arrange(desc(missing_inflation_count))
+```
+
+# Question 3.2
+# Group the data by country. In a single pipeline, count how many missing values (NA) exist in the analyst_note column for each nation, and sort the output so the country with the most missing notes is at the top.
+
+```{r}
+advanced_macro_data %>%
+    group_by(country) %>%
+    summarize(missing_analyst_note = sum(is.na(analyst_note))) %>%
+    arrange(desc(missing_analyst_note))
+```
+
+# Question 4
+# Create a new column called decade (e.g., 1980, 1990, 2000). Then, calculate the median gov_debt_pct for each country, per decade.
+```{r}
+advanced_macro_data %>%
+    mutate(decade = year %/% 10 * 10) %>%
+    group_by(country, decade) %>%
+    summarize(
+        median_debt = median(gov_debt_pct, na.rm = TRUE)
+    )
+```
+
+# Question 4.2
+# Create a new column called five_year_block (e.g., 1980, 1985, 1990). Then, calculate the average unemployment_rate for each country in each 5-year block. Hint: Use modulo or integer division with 5 instead of 10.
+
+```{r}
+advanced_macro_data %>%
+    mutate(five_year_block = year %/% 5 * 5) %>%
+    group_by(country, five_year_block) %>%
+    summarize(
+        avg_unemployment = mean(unemployment_rate, na.rm = TRUE)
+    )
+```
+
+# Question 5
+# For South Korea only, create a new column that shows the inflation_rate of the previous year. Then, create another column calculating the year-over-year change in inflation (Current Year - Previous Year)
+
+```{r}
+advanced_macro_data %>%
+    filter(country == 'South Korea') %>%
+    arrange(year) %>%
+    mutate(
+        prev_inflation = lag(inflation_rate),
+        yoy_inflation_change = inflation_rate - prev_inflation
+    )
+```
+
+# Question 5.2
+# Filter the dataset for the "United States" only. Create a new column showing the gov_debt_pct of the previous year, and another column showing the year-over-year change in debt percentage (Current Year - Previous Year).
+
+```{r}
+advanced_macro_data %>%
+    filter(country == 'United States') %>%
+    arrange(year) %>%
+    mutate(ly_gov_debt_pct = lag(gov_debt_pct),
+    yoy_gov_debt_pct = gov_debt_pct - ly_gov_debt_pct
+    ) %>%
+    select(country, year, gov_debt_pct, ly_gov_debt_pct, yoy_gov_debt_pct)
+```
+# Learned how to use lag functions and properly ensure newly mutated columns appear in the pulled dataset.
+
+# Question 6
+# Calculate the cumulative sum of tech_exports_bln for Taiwan from 1980 to 2025. Plot this trajectory as an area chart (geom_area), showing how their total tech export volume has accumulated over time.
+
+```{r}
+advanced_macro_data %>%
+    filter(country == 'Taiwan') %>%
+    arrange(year) %>%
+    mutate(total_exports = cumsum(tech_exports_bln)) %>%
+    ggplot(aes(x = year, y = total_exports)) +
+    geom_area()
+```
+
+# learned the cumsum aggregate function and how summarize will collapse the dataset into one group which is the same no matter the other details whereas mutate will not collapse it allowing it to make a cumulative sum that summarize cannot do.
+
+# Question 6.2
+# Filter the dataset for South Korea and Japan for years between 2000 and 2025. Calculate the cumulative sum of Foreign Direct Investment (fdi_bln) for each country over this period. Plot these two trajectories on the same chart as time-series lines (geom_line()), coloring the lines by country to compare their total accumulated FDI.
+
+```{r}
+advanced_macro_data %>%
+filter(country %in% c('Japan', 'South Korea'), year >= 2000) %>%
+group_by(country) %>%
+arrange(year) %>%
+mutate(sum_fdi_bln = cumsum(fdi_bln)) %>%
+ggplot(aes(x = year, y = sum_fdi_bln, color = country)) +
+geom_line()
+```
+
+# Question 6.3
+# Filter the dataset for China, Taiwan, and South Korea for years from 1990 to 2025. Calculate the running cumulative total of technology exports (tech_exports_bln) for each country over this time frame. Plot their growth on a single line chart (geom_line()), coloring each line by country to compare how their high-tech export bases accumulated over those 35 years.
+
+```{r}
+advanced_macro_data %>%
+    filter(country %in% c('China', 'Taiwan', 'South Korea'), year >= 1990) %>%
+    arrange(year) %>%
+    mutate(sum_exports = cumsum(tech_exports_bln)) %>%
+    ggplot(aes(x = year, y = sum_exports, color = country)) +
+    geom_line()
+```
+
+# Learned about %in% and properly using it which means anything in the data set that fulfills any of the rules within, and then how to use c() which means combine, by using arrange(year) we ensure the values do not mix together from all of the entries inside the c() work.
+
+# Question 7
+# Let's smooth out the volatility. Calculate a 3-year rolling average for China's fdi_bln. Plot both the actual yearly FDI (as points) and the 3-year rolling average (as a line) on the same graph. Hint: Look up the slider or zoo packages, or figure out how to do it manually with dplyr lags.
+
+```{r}
+advanced_macro_data %>%
+    
+
+
+```
+
+
+
+
+Question 2: 
+
+Question 3: 
+
+Question 4: 
+
+Level 2: Advanced Window Functions (Time Series)
+In economics, what happened yesterday is just as important as what is happening today. You will need to research window functions in dplyr that look at previous rows.
+
+Question 5: .
+
+Question 6: 
+
+Question 7: 
+
+Level 3: Reshaping Data (Pivoting)
+Data rarely comes in the exact shape you need for plotting or regression. You need to master changing data from "long" format to "wide" format, and vice versa.
+
+Question 8: Pivot the dataset so that each country's tech_exports_bln has its own dedicated column (e.g., your columns should be year, China, South Korea, United States, etc.). This is known as making data "wide".
+
+Question 9: Using the wide data you created in Question 8, calculate a new column representing the difference between South Korea's tech exports and Taiwan's tech exports for every year. Plot this difference as a bar chart over time.
+
+Question 10: Take your wide dataset from Question 8 and pivot it back to a long format.
+
+Level 4: Advanced Visualizations & Scales
+Default ggplot settings are rarely presentation-ready for academic papers.
+
+Question 11: Create a faceted line plot showing gov_debt_pct over time for all countries. However, the y-axis scales must be "free" (independent for each mini-graph) so that countries with lower debt aren't flattened at the bottom of the chart.
+
+Question 12: Plot the fdi_bln of the United States over time. Modify the y-axis so the numbers format automatically with dollar signs (e.g., $100, not 100). Hint: You will need to explore the scales package, which works seamlessly with ggplot.
+
+Question 13: Create a scatterplot comparing inflation_rate (x) and unemployment_rate (y) for all countries. Remove all rows with NA values before plotting. Change the global theme of the plot to theme_minimal() and move the color legend to the bottom of the chart instead of the right side.
+
+Question 14: Plot unemployment_rate over time for South Korea. Add a vertical dashed line exactly at the year 1997. Add a text annotation next to this line that says "Asian Financial Crisis".
+
+Question 15: Convert the country column into a factor. Relevel this factor so that "South Korea" is explicitly first and "China" is second. Create a boxplot of tech_exports_bln across countries. Because of your factor manipulation, South Korea and China must appear as the first two boxes on the x-axis, regardless of alphabetical order.
+
+Level 5: String Manipulation & Conditional Logic
+Real-world data is messy. You must learn to clean text and apply multiple logical conditions simultaneously.
+
+Question 16: Look at the analyst_note column. It is filled with random spaces, varying capitalizations, and underscores. Use the stringr package (part of tidyverse) to clean this column: make everything lowercase, trim all white space from the edges, and replace all underscores with a standard space.
+
+Question 17: Filter the dataset to keep only the rows where the analyst_note contains the word "crisis" or "recession" (ignoring case).
+
+Question 18: Create a new categorical variable called economic_era. If the year is before 1990, label it "Cold War". If the year is between 1990 and 2008, label it "Global Integration". If the year is after 2008, label it "Post-Crisis". Calculate the average gov_debt_pct for the US across these three eras.
+
+Question 19: In a single pipeline, calculate the mean for all numeric columns in the dataset (except year), grouped by country. Hint: Look up how to use the across() function inside summarize().
+
+Question 20 (The Master Pipeline): Write one continuous pipeline that does the following in order:
+
+Drops any rows with NA in inflation_rate.
+
+Filters for years greater than 2000.
+
+Calculates a new column called debt_to_fdi_ratio (gov_debt_pct / fdi_bln).
+
+Groups by country to find the maximum debt_to_fdi_ratio for each nation.
+
+Pipes directly into a ggplot bar chart visualizing this maximum ratio, sorted from highest to lowest.
