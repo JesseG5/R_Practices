@@ -212,16 +212,200 @@ advanced_macro_data %>%
 
 # Learned about %in% and properly using it which means anything in the data set that fulfills any of the rules within, and then how to use c() which means combine, by using arrange(year) we ensure the values do not mix together from all of the entries inside the c() work.
 
+# Question 6.4
+# Filter the dataset for United States, Japan, and China for years from 2005 to 2025. Calculate the cumulative sum of gov_debt_pct for each country across this timeframe. Plot the trajectories on a line chart (geom_line()), ensuring each country has its own distinct line color.
+
+```{r}
+advanced_macro_data %>%
+    filter(country %in% c('United States', 'China', 'Japan'), year >= 2005) %>%
+    group_by(country) %>%
+    arrange(year) %>%
+    mutate(sum_gdebtp = cumsum(gov_debt_pct)) %>%
+    ggplot(aes(x = year, y = sum_gdebtp, color = country)) +
+    geom_line()
+```
+# Learned I must group by countries otherwise it will combine their rates in the final graph
+
+
 # Question 7
 # Let's smooth out the volatility. Calculate a 3-year rolling average for China's fdi_bln. Plot both the actual yearly FDI (as points) and the 3-year rolling average (as a line) on the same graph. Hint: Look up the slider or zoo packages, or figure out how to do it manually with dplyr lags.
 
 ```{r}
 advanced_macro_data %>%
-    
-
-
+    filter(country == 'China') %>%
+    arrange(year) %>%
+    mutate(
+        fdi_rolling_avg = ((fdi_bln + lag(fdi_bln) + lag(fdi_bln, 2)) /3)
+    ) %>%
+    ggplot(aes(x = year)) +
+    geom_point(aes(y = fdi_bln), color = 'black') +
+    geom_line(aes(y = fdi_rolling_avg), color = 'blue', linewidth = 1)
 ```
 
+# Question 7.1
+# Filter the dataset for South Korea. Calculate a 3-year rolling average for its technology exports (tech_exports_bln). Create a visualization that plots the actual annual tech exports as points (geom_point()) and the smoothed 3-year rolling average as a line (geom_line()) on top of it.
+
+```{r}
+advanced_macro_data %>%
+    filter(country == 'South Korea') %>%
+    arrange(year) %>%
+    mutate(
+        rol_avg_tech = ((tech_exports_bln + lag(tech_exports_bln) + lag(tech_exports_bln, 2)) / 3)
+    ) %>%
+    ggplot(aes(x = year)) +
+    geom_point(aes(y = tech_exports_bln), color = 'purple') +
+    geom_line(aes(y = rol_avg_tech), color = 'orange')
+```
+
+# Question 7.2
+# Filter the dataset for the United States for years between 1990 and 2025. Calculate a 4-year rolling average for its government debt ratio (gov_debt_pct). Plot the raw yearly debt percentages as points and the 4-year rolling average trend as a line on the same graph.
+
+```{r}
+advanced_macro_data %>%
+    filter(country == 'United States', year >= 2000) %>%
+    arrange(year) %>%
+    mutate(
+        rol_avg_gdpt = ((gov_debt_pct) + lag(gov_debt_pct) + lag(gov_debt_pct, 2) + lag(gov_debt_pct, 3)) / 4
+    ) %>%
+    ggplot(aes(x = year)) +
+    geom_point(aes(y = gov_debt_pct, color = 'blue')) +
+    geom_line(aes(y = rol_avg_gdpt, color = 'red'))
+```
+
+# Question 8
+# Pivot the dataset so that each country's tech_exports_bln has its own dedicated column (e.g., your columns should be year, China, South Korea, United States, etc.). This is known as making data "wide".
+
+```{r}
+advanced_macro_data %>%
+    select(year, country, tech_exports_bln) %>%
+    pivot_wider(
+        names_from = country,
+        values_from = tech_exports_bln
+    )
+```
+
+# Question 8.1
+# Reshape the dataset to analyze Foreign Direct Investment (fdi_bln) across nations side by side.
+# Select only year, country, and fdi_bln. Pivot the data so that each country becomes its own column filled with its respective FDI numbers.
+```{r}
+advanced_macro_data %>%
+    select(year, country, fdi_bln) %>%
+    pivot_wider(
+        names_from = country,
+        values_from = fdi_bln
+    )
+```
+# Question 8.2
+# Create a wide table comparing Government Debt (gov_debt_pct) for only the Asian economies in the dataset (China, Japan, South Korea, and Taiwan) for years starting from 2000.
+# Filter for those four countries and year >= 2000. Select year, country, and gov_debt_pct. Pivot the dataset wide so each of those four countries gets its own column.
+
+```{r}
+advanced_macro_data %>%
+    filter(country %in% c('China', 'Japan', 'Taiwan', 'South Korea')) %>%
+    select(year, country, gov_debt_pct) %>%
+    pivot_wider(
+        names_from = country,
+        values_from = gov_debt_pct
+    )
+```
+
+# Question 8.3
+# Calculate a 3-year rolling average for Unemployment Rate (unemployment_rate) for United States and China, then pivot the calculated rolling averages wide.
+# Filter for United States and China. Group by country and order chronologically with arrange(year). Create a new column unemp_rolling_avg using lag(). Select year, country, and unemp_rolling_avg.
+# Pivot wide so United States and China are column headers displaying their smoothed unemployment rates.
+
+```{r}
+advanced_macro_data %>%
+    filter(country %in% c('United States', 'China')) %>%
+    arrange(year) %>%
+    mutate(rol_avg = ((unemployment_rate) + lag(unemployment_rate) + lag(unemployment_rate, 2)) / 3) %>%
+    select(year, country, rol_avg) %>%
+    pivot_wider(
+        names_from = country,
+        values_from = rol_avg
+    )
+```
+
+# Question 9
+# Using the wide data you created in Question 8, calculate a new column representing the difference between South Korea's tech exports and Taiwan's tech exports for every year. Plot this difference as a bar chart over time.
+# Q8
+```{r}
+advanced_macro_data %>%
+    select(year, country, tech_exports_bln) %>%
+    pivot_wider(
+        names_from = country,
+        values_from = tech_exports_bln
+    ) %>%
+    mutate(tech_diff = `South Korea` - `Taiwan`) %>%
+    ggplot(aes(x = year, y = tech_diff)) +
+    geom_col(fill = 'blue') +
+    labs(
+        title = "Tech Export Difference: South Korea and Taiwan",
+        x = "Year",
+        y = "Difference (Billions USD)"
+    )
+```
+
+# Question 9.1
+# Compare the Unemployment Rate (unemployment_rate) gap between the United States and Japan. Pivot the dataset wide, create a new column unemp_gap (US rate minus Japan's rate), and plot this gap over time as a bar chart (geom_col()).
+```{r}
+advanced_macro_data %>%
+    select(year, country, unemployment_rate) %>%
+    pivot_wider(
+        names_from = country,
+        values_from = unemployment_rate
+    ) %>%
+    mutate(unemp_gap = `United States` - `Japan`) %>%
+    ggplot(aes(x = year, y = unemp_gap)) +
+    geom_col(fill = 'red') +
+    labs(
+        title = "Unemployment Gap between the United States and Japan",
+        x = "Year",
+        y = "Unemployment Gap (In Percent)"
+    )
+```
+
+# Question 9.2
+# Calculate the difference in Foreign Direct Investment (fdi_bln) between China and South Korea for years starting from 2005. Pivot the data wide, create a new column fdi_diff (China minus South Korea), and plot the FDI difference over time as a bar chart (geom_col()).
+
+```{r}
+advanced_macro_data %>%
+    filter(year >= 2005) %>%
+    select(year, country, fdi_bln) %>%
+    pivot_wider(
+        names_from = country,
+        values_from = fdi_bln
+    ) %>%
+    mutate(fdi_diff = `China` - `South Korea`) %>%
+    ggplot(aes(x = year, y = fdi_diff)) +
+    geom_col(fill = 'purple') +
+    labs(
+        title = "FDI difference between China and South Korea",
+        x = "Year",
+        y = "FDI difference"
+    )
+```
+
+
+
+# Question 9.3
+# Calculate the combined sum of Government Debt (gov_debt_pct) ratios for Taiwan and South Korea. Pivot the data wide, create a new column total_debt_pct (Taiwan plus South Korea), and plot this combined total over time as a bar chart (geom_col()).
+
+```{r}
+advanced_macro_data %>%
+    select(year, country, gov_debt_pct) %>%
+    pivot_wider(
+        names_from = country,
+        values_from = gov_debt_pct
+    ) %>%
+    mutate(total_debt_pct = `Taiwan` + `South Korea`) %>%
+    ggplot(aes(x = year, y = total_debt_pct)) +
+    geom_col(fill = 'green') +
+    labs(
+        title = "Total amount of cumulative debt between South Korea and Taiwan",
+        x = "Year",
+        y = "Cumulative Debt"
+    )
 
 
 
@@ -243,9 +427,9 @@ Question 7:
 Level 3: Reshaping Data (Pivoting)
 Data rarely comes in the exact shape you need for plotting or regression. You need to master changing data from "long" format to "wide" format, and vice versa.
 
-Question 8: Pivot the dataset so that each country's tech_exports_bln has its own dedicated column (e.g., your columns should be year, China, South Korea, United States, etc.). This is known as making data "wide".
+Question 8: 
 
-Question 9: Using the wide data you created in Question 8, calculate a new column representing the difference between South Korea's tech exports and Taiwan's tech exports for every year. Plot this difference as a bar chart over time.
+Question 9: 
 
 Question 10: Take your wide dataset from Question 8 and pivot it back to a long format.
 
