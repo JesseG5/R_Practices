@@ -406,6 +406,701 @@ advanced_macro_data %>%
         x = "Year",
         y = "Cumulative Debt"
     )
+```
+
+# Question 7-9 Review
+# You want to compare the 3-year rolling average of Foreign Direct Investment (fdi_bln) between China and the United States for years starting from 2000.
+# Filter & Smooth: Isolate the data for China and the United States for years 2000 and onward.
+# Calculate Rolling Averages: Group by country, ensure the data is properly sorted by year, and calculate a new column fdi_3yr_avg using a 3-year rolling window with lag().
+# Reshape: Select only year, country, and fdi_3yr_avg, then pivot the data wide so China and United States each have their own column containing these smoothed values.
+# Calculate Gap: Create a new column fdi_gap representing China's 3-year rolling average minus the United States' 3-year rolling average (China - United States``).
+# Plot: Create a bar chart (geom_col()) showing this FDI rolling average gap (fdi_gap) over time.
+
+
+```{r}
+advanced_macro_data %>%
+    filter(country %in% c('United States', 'China')) %>%
+    group_by(country) %>%
+    arrange(year) %>%
+    mutate(rolling_fdi = (fdi_bln +lag(fdi_bln)+ lag(fdi_bln, 2)) / 3) %>%
+    filter(year >= 2000) %>%
+    select(year, country, rolling_fdi) %>%
+    pivot_wider(
+        names_from = country,
+        values_from = rolling_fdi
+    ) %>%
+    mutate(fdi_gap = `China` - `United States`) %>%
+    ggplot(aes(x = year, y = fdi_gap)) +
+    geom_col(fill = 'red')
+```
+
+
+
+
+
+# Question 10
+# Take your wide dataset from Question 8 and pivot it back to a long format.
+```{r}
+advanced_macro_data %>%
+    select(year, country, tech_exports_bln) %>%
+    pivot_wider(
+        names_from = country,
+        values_from = tech_exports_bln
+    ) %>%
+    pivot_longer(
+        cols = -year,
+        names_to = "country",
+        values_to = "tech_exports_bln"
+    )
+```
+
+
+# Question 10.1
+# Start by pivoting Foreign Direct Investment (fdi_bln) wide across all countries. Then, use pivot_longer() to collapse those country columns back into a long format dataset with columns named country and fdi_bln.
+
+
+```{r}
+advanced_macro_data %>%
+    select(year, country, fdi_bln) %>%
+    pivot_wider(
+        names_from = country,
+        values_from = fdi_bln
+    ) %>%
+    pivot_longer(
+        cols = -year,
+        names_to = "country",
+        values_to = "fdi_bln"
+    )
+```
+
+
+# Question 10.2
+# Filter the dataset for China, Japan, and South Korea starting from year 2010, and pivot Government Debt (gov_debt_pct) wide. Then, use pivot_longer() to return it back to long format, using cols = c(China, Japan, South Korea) explicitly instead of -year.
+
+```{r}
+advanced_macro_data %>%
+    filter(country %in% c('China', 'Japan', 'South Korea')) %>%
+    select(year, country, gov_debt_pct) %>%
+    pivot_wider(
+        names_from = country,
+        values_from = gov_debt_pct
+    ) %>%
+    pivot_longer(
+        cols = c(`China`, `Japan`, `South Korea`),
+        names_to = "country",
+        values_to = "gov_debt_pct"
+    )
+```
+
+# Question 10.3
+# Take Unemployment Rate (unemployment_rate) for United States and China, calculate a 3-year rolling average for each, and pivot those rolling averages wide. Finally, use pivot_longer() to collapse the wide rolling average table back into long format with names_to = "country" and values_to = "unemp_3yr_avg".
+
+```{r}
+advanced_macro_data %>%
+    filter(country %in% c('United States', 'China')) %>%
+    group_by(country) %>%
+    arrange(year) %>%
+    mutate(rolavgun = ((unemployment_rate) + lag(unemployment_rate) + lag(unemployment_rate, 2)) / 3) %>%
+    ungroup(country) %>%
+    select(year, country, rolavgun) %>%
+    pivot_wider(
+        names_from = country,
+        values_from = rolavgun
+    ) %>%
+    pivot_longer(
+        cols = c(`United States`, China),
+        names_to = "country",
+        values_to = "rolavgun"
+    )
+```
+
+
+# Question 11
+# Create a faceted line plot showing gov_debt_pct over time for all countries. However, the y-axis scales must be "free" (independent for each mini-graph) so that countries with lower debt aren't flattened at the bottom of the chart.
+
+
+```{r}
+advanced_macro_data %>%
+    ggplot(aes(x = year, y = gov_debt_pct)) +
+    geom_line(color = 'blue') +
+    facet_wrap(~country, scales = "free_y") +
+    labs(
+        title = "test",
+        x = "Year",
+        y = "Government Debt (% of GDP)"
+    )
+```
+
+# Question 11.1
+# Create a faceted line plot showing Foreign Direct Investment (fdi_bln) over time for all countries. Set the y-axis scales to "free_y" so that smaller economies' investment trends are clearly visible alongside larger ones.
+
+```{r}
+advanced_macro_data %>%
+    ggplot(aes(x = year, y = fdi_bln)) +
+    geom_line(color = 'red') +
+    facet_wrap(~country, scales = "free_y") +
+    labs(
+        title = "Second Test",
+        x = "Year",
+        y = "Foreign Direct Investment (Billions)"
+    )
+```
+
+
+# Question 11.2
+# Filter the dataset for years 2005 and onward, then create a faceted line plot of Unemployment Rate (unemployment_rate) over time for all countries, using facet_wrap(~ country, scales = "free_y").
+
+```{r}
+advanced_macro_data %>%
+    filter(year >= 2005) %>%
+    ggplot(aes(x = year, y = unemployment_rate)) +
+    geom_line(color = 'red') +
+    facet_wrap(~country, scales = "free_y") +
+    labs(
+        title = "Third Test",
+        x = "Year",
+        y = "Unemployment Rate"
+    )
+```
+
+
+
+# Question 11.3
+# Calculate a 3-year rolling average for Technology Exports (tech_exports_bln) for each country (remember to group_by(country) and arrange(year) first!). Then, create a faceted line plot (geom_line()) showing this rolling average over time across all countries using free y-axis scales.
+
+
+```{r}
+advanced_macro_data %>%
+    group_by(country) %>%
+    arrange(year) %>%
+    mutate(rol_avg_teb = (tech_exports_bln + lag(tech_exports_bln, 1) + lag(tech_exports_bln, 2)) / 3) %>%
+    ungroup(country) %>%
+    ggplot(aes(x = year, y = rol_avg_teb)) +
+    geom_line() +
+    facet_wrap(~country, scales = "free_y") +
+    labs(
+        title = "fourth test",
+        x = "year",
+        y = "rolling average of tech exports"
+    )
+```
+
+# Question 12
+# Plot the fdi_bln of the United States over time. Modify the y-axis so the numbers format automatically with dollar signs (e.g., $100, not 100). Hint: You will need to explore the scales package, which works seamlessly with ggplot.
+
+```{r}
+advanced_macro_data %>%
+    filter(country == 'United States') %>%
+    ggplot(aes(x = year, y = fdi_bln)) +
+    geom_line(color = "darkgreen") +
+    scale_y_continuous(labels = scales::label_dollar()) +
+    labs(
+        title = "United States FDI over time",
+        x = "Year",
+        y = "Foreign Direct Investment (Billions)"
+    )
+```
+# Learned here how to properly add a dollar sign to a chart using the scale_y_continuous function
+
+
+
+
+# Question 12.1
+# Plot Technology Exports (tech_exports_bln) for China over time using a line plot (geom_line()). Modify the y-axis so the values automatically format with dollar signs using scales::label_dollar().
+```{r}
+advanced_macro_data %>%
+    filter(country == 'China') %>%
+    ggplot(aes(x = year, y = tech_exports_bln))+
+    geom_line()+
+    scale_y_continuous(labels = scales::label_dollar())
+```
+
+# Question 12.2
+# Filter the dataset for South Korea and plot its Unemployment Rate (unemployment_rate) over time. Format the y-axis so the numbers display automatically as percentages (e.g., 5% instead of 5) using scale_y_continuous(labels = scales::label_percent(scale = 1)).
+
+```{r}
+advanced_macro_data %>%
+    filter(country == 'South Korea') %>%
+    ggplot(aes(x = year, y = unemployment_rate)) +
+    geom_line() +
+    scale_y_continuous(labels = scales::label_percent(scale =1))
+```
+
+# Question 12.3
+# Plot Government Debt (gov_debt_pct) over time for Japan. Modify the y-axis so that numbers are formatted as clean values with comma separators using scale_y_continuous(labels = scales::label_comma()) and add custom labs() titles for clarity.
+
+
+```{r}
+advanced_macro_data %>%
+    filter(country == 'Japan') %>%
+    ggplot(aes(x = year, y = gov_debt_pct)) +
+    geom_line() +
+    scale_y_continuous(labels = scales::label_comma())
+```
+
+
+
+# Question 13
+# Create a scatterplot comparing inflation_rate (x) and unemployment_rate (y) for all countries. Remove all rows with NA values before plotting. Change the global theme of the plot to theme_minimal() and move the color legend to the bottom of the chart instead of the right side.
+
+```{r}
+advanced_macro_data %>%
+    drop_na(inflation_rate, unemployment_rate) %>%
+    ggplot(aes(x = inflation_rate, y = unemployment_rate, color = country)) +
+    geom_point() +
+    theme_minimal() +
+    theme(legend.position = "bottom") +
+    labs(
+        title = "Inflation Rate vs Unemployment Rate",
+        x = "Inflation Rate (%)",
+        y = "Unemployment Rate (%)",
+        color = "Country"
+    )
+```
+
+
+
+# Question 13.1
+# Create a scatterplot comparing Government Debt (gov_debt_pct) on the x-axis and Inflation Rate (inflation_rate) on the y-axis for all countries, with points colored by country. Drop rows with NA values in these columns, set the plot theme to theme_light(), and move the legend to the top using theme(legend.position = "top").
+
+
+
+
+```{r}
+advanced_macro_data %>%
+    drop_na(gov_debt_pct, inflation_rate) %>%
+    ggplot(aes(x = gov_debt_pct, y = inflation_rate, color = country)) +
+    geom_point() +
+    theme_minimal() +
+    theme(legend.position = "bottom") +
+    scale_y_continuous(labels = scales::label_percent(scale = 1)) +
+    labs(
+        title = "Comparison of Government Debt to Inflation Rate",
+        x = "Government Debt (%)",
+        y = "Inflation Rate (%)",
+        color = "Country"
+    )
+```
+
+
+
+# Question 13.2
+# Filter the data for the United States and China. Create a scatterplot comparing Technology Exports (tech_exports_bln) on the x-axis against FDI (fdi_bln) on the y-axis, colored by country. Use drop_na(), apply theme_bw(), and completely remove the legend using theme(legend.position = "none").
+
+
+
+
+
+```{r}
+advanced_macro_data %>%
+filter(country %in% c('United States', 'China')) %>%
+drop_na(tech_exports_bln, fdi_bln) %>%
+ggplot(aes(x = tech_exports_bln, y = fdi_bln, color = country)) +
+geom_point() +
+theme_bw() +
+theme(legend.position = "bottom") +
+labs(
+    title = "first test",
+    x = "tech exports bln",
+    y = "fdi bln"
+)
+```
+
+
+
+
+
+
+
+
+
+# Question 13.3
+# Filter the dataset for years 2010 and onward. Drop missing values in fdi_bln and gov_debt_pct, then build a scatterplot comparing fdi_bln (x-axis) and gov_debt_pct (y-axis) colored by country. Apply theme_classic(), move the legend to the bottom, and format the x-axis numbers as currency using scale_x_continuous(labels = scales::label_dollar()).
+
+
+
+```{r}
+advanced_macro_data %>%
+    filter(year >= 2010) %>%
+    drop_na(fdi_bln, gov_debt_pct) %>%
+    ggplot(aes(x = fdi_bln, y = gov_debt_pct, color = country)) +
+    geom_point() +
+    theme_classic() +
+    theme(legend.position = "bottom") +
+    scale_x_continuous(labels = scales::label_dollar()) +
+    labs(
+        title = "Graph showing fdi to gvt debt",
+        x = "fdi (bil)",
+        y = "gvt debt (%)"
+    )
+```
+
+
+
+# Question 14 
+# Plot unemployment_rate over time for South Korea. Add a vertical dashed line exactly at the year 1997. Add a text annotation next to this line that says "Asian Financial Crisis".
+
+
+
+
+```{r}
+advanced_macro_data %>%
+    filter(country == 'South Korea') %>%
+    ggplot(aes(x = year, y = unemployment_rate)) +
+    geom_point() +
+    geom_line() +
+    geom_vline(xintercept = 1997, linetype = "dashed", color = "red") +
+    annotate(
+        "text",
+        x = 1997.5,
+        y = 20,
+        label = "Asian Financial Crisis",
+        color = "red",
+        hjust = 0
+    ) +
+    labs(
+        title = "graph showing asian financial crisis damage.",
+        x = "Year",
+        y = "Unemployment Rate(%)"
+    )
+```
+
+
+
+
+
+
+# Question 14.1
+# Filter the data for the United States and plot Government Debt (gov_debt_pct) over time using geom_line(). Add a vertical dashed red line at the year 2008, and use annotate() to add text at x = 2009 and y = 80 that says "Global Financial Crisis".
+
+```{r}
+advanced_macro_data %>%
+    filter(country == 'United States') %>%
+    ggplot(aes(x = year, y = gov_debt_pct)) +
+    geom_line() +
+    geom_point() +
+    geom_vline(xintercept = 2008, linetype = "solid", color = "red") +
+    annotate(
+        "text",
+        x = 2008.5,
+        y = 10,
+        label = "Global Financial Crisis",
+        color = "red",
+        hjust = "red"
+    ) +
+    labs(
+        title = "Graph Showing Effects of the Global Financial Crisis",
+        x = "Year",
+        y = "Government Debt as a Percent"
+    )
+```
+
+
+# Question 14.2
+# Plot Inflation Rate (inflation_rate) over time for China. Add a horizontal dashed blue line across the graph at y = 3 using geom_hline(yintercept = 3, linetype = "dashed", color = "blue"). Add a text annotation at x = 2000 and y = 3.5 that says "Inflation Target".
+
+
+```{r}
+advanced_macro_data %>%
+    filter(country == 'China') %>%
+    ggplot(aes(x = year, y = inflation_rate))+
+    geom_line() +
+    geom_point() +
+    geom_hline(yintercept = 3, linetype = "dashed", color = "blue") +
+    annotate(
+        "text",
+        x = 2000,
+        y = 3.5,
+        label = "Inflation Target",
+        color = "red",
+        hjust = 0
+    ) +
+    labs(
+        title = "Graph showing Inflation Target",
+        x = "Year",
+        y = "Inflation Rate"
+    )
+```
+
+
+
+
+
+# Question 14.3
+# Filter the dataset for Japan and plot its Unemployment Rate (unemployment_rate) over time using both geom_line() and geom_point(). Add a vertical dashed line at the year 2020 (xintercept = 2020). Annotate the plot at x = 2018 and y = 3.2 with the text "COVID-19 Shock", setting hjust = 1 so the label sits to the left of the dashed line.
+
+
+```{r}
+advanced_macro_data %>%
+    filter(country == 'Japan') %>%
+    ggplot(aes(x = year, y = unemployment_rate)) +
+    geom_line() +
+    geom_point() +
+    geom_vline(xintercept = 2020, linetype = "dashed", color = "blue") +
+    annotate(
+        "Text",
+        x = 2010,
+        y = 7,
+        label = "COVID-19 Shock",
+        color = "red",
+        hjust = 0
+    ) +
+    labs(
+        title = "Graph showing damage of COVID-19",
+        x = "Year",
+        y = "Unemployment Rate"
+    )
+```
+
+# Review Question 1
+# Before passing to ggplot(), your rolling average pipeline should retain a long, grouped structure with the new calculated column added
+# I have an image I am looking at on my end which has the in a horizontal row, countrys at the top left coloumn going down, years are next coloumn, tech exports are the next, and rol avg tech exports are the next so I want that.
+# That column only has south korea going from 1995- 1997 then it has the united states under it
+
+```{r}
+advanced_macro_data %>%
+    filter(year >= 1995, year <= 1997) %>%
+    filter(country %in% c('United States', 'South Korea')) %>%
+    group_by(country) %>%
+    arrange(country, year) %>%
+    mutate(rol_avg_teb = (tech_exports_bln + lag(tech_exports_bln) + lag(tech_exports_bln, 2)) / 3) %>%
+    ungroup(country) %>%
+    select(country, year, tech_exports_bln, rol_avg_teb)
+```
+
+
+# Review Question 2
+# When pivoting countries to columns, the dataset collapses years into single rows with countries spread across the horizontal axis:
+
+```{r}
+advanced_macro_data %>%
+    filter(year >= 2010) %>%
+    filter(country %in% c('China', 'Japan', 'South Korea')) %>%
+    select(year, country, tech_exports_bln) %>%
+    pivot_wider(
+        names_from = country,
+        values_from = tech_exports_bln
+    )
+
+```
+
+
+# Review Question 3
+# When pivoting back from wide, the data expands vertically back into standard key-value pairs:
+
+
+
+
+
+
+
+```{r}
+advanced_macro_data %>%
+    filter(year >= 2010) %>%
+    filter(country %in% c('China', 'Japan', 'South Korea')) %>%
+    select(year, country, tech_exports_bln) %>%
+    pivot_wider(
+        names_from = country,
+        values_from = tech_exports_bln
+    ) %>%
+    pivot_longer(
+        cols = -year,
+        names_to = "country",
+        values_to = "tech_exports_bln"
+    )
+```
+
+
+
+
+
+
+# Review Question 1.1
+# Goal: Perform a round-trip reshape (fdi_bln wide by country, then back to long) for China and the United States.
+# Final Plot: A line chart comparing FDI over time for both countries with proper currency formatting ($) on the y-axis.
+
+
+```{r}
+advanced_macro_data %>%
+    filter(country %in% c('United States', 'China')) %>%
+    select(year, country, fdi_bln) %>%
+    pivot_wider(
+        names_from = country,
+        values_from = fdi_bln
+    ) %>%
+    pivot_longer(
+        cols = -year,
+        names_to = "country",
+        values_to = "fdi_bln"
+    ) %>%
+    ggplot(aes(x = year, y = fdi_bln, color = country)) +
+    geom_line() +
+    scale_y_continuous(labels = scales::label_dollar()) +
+    labs(
+        title = "Comparison of China and United States FDI (billions USD)",
+        x = "Year",
+        y = "FDI (in Billions)"
+    )
+```
+
+
+# Review Question 2.1
+# Goal: Calculate a 3-year rolling average of unemployment_rate for all countries (drop NAs).
+# Final Plot: A clean small-multiples dashboard (theme_minimal()) showing each country's rolling unemployment trend in its own panel with independent y-axis scales.
+
+
+```{r}
+advanced_macro_data %>%
+    arrange(year) %>%
+    group_by(country) %>%
+    mutate(rlng_avg_unem = (unemployment_rate + lag(unemployment_rate) + lag(unemployment_rate, 2)) / 3) %>%
+    ungroup(country) %>%
+    ggplot(aes(x = year, y = rlng_avg_unem)) +
+    geom_line() +
+    geom_point()+
+    theme_minimal() +
+    facet_wrap(~country, scales = "free_y") +
+    scale_y_continuous(labels = scales::label_percent(scale = 1)) +
+    labs(
+        title = "Three-year rolling averages for unemployment in Major Economies",
+        x = "Year",
+        y = "Unemployment"
+    )
+```
+
+
+# Review Question 3.1
+# Goal: Highlight a major macroeconomic event for South Korea.
+# Final Plot: A line chart of government debt as a percentage of GDP over time. It must feature a red vertical dashed line at 1997 and a text label reading "IMF Bailout" positioned cleanly at $(1998, 40)$, with the y-axis formatted as percentages.
+
+
+```{r}
+advanced_macro_data %>%
+    filter(country == 'South Korea') %>%
+    ggplot(aes(x = year, y = gov_debt_pct)) +
+    geom_point() +
+    geom_line() +
+    geom_vline(xintercept = 1997, linetype = "dashed", color = "red") +
+    annotate(
+        "text",
+        x = 1998,
+        y = 6,
+        label = "IMF Bailout",
+        color = "red",
+        hjust = 0
+    ) +
+    labs(
+        title = "Graph showing the effects of the IMF Bailout",
+        x = "Year",
+        y = "Government Debt as a Percentage of GDP"
+    )
+```
+
+
+
+# Review Question 4.1
+# Goal: Visualize the Phillips Curve dynamics for data from 2005 onward (drop missing values for both metrics).
+# Final Plot: A scatterplot mapping inflation_rate on the x-axis against unemployment_rate on the y-axis, colored by country. Use a light background theme (theme_light()) and position the legend along the bottom.
+
+
+```{r}
+advanced_macro_data %>%
+    filter(year >= 2005) %>%
+    drop_na(inflation_rate, unemployment_rate) %>%
+    ggplot(aes(x = inflation_rate, y = unemployment_rate, color = country)) +
+    geom_point() +
+    theme_light() +
+    theme(legend.position = "bottom")
+```
+
+# Review Question 4.2
+# Goal: Analyze the relationship between government debt and foreign direct investment for East Asian economies since the 2008 Global Financial Crisis.
+# Filtering: Restrict the data to China, Japan, and South Korea for years 2008 and onward. Drop any rows with missing values in gov_debt_pct or fdi_bln.
+# Final Plot: A scatterplot mapping gov_debt_pct on the x-axis against fdi_bln on the y-axis, colored by country. Format the y-axis values as currency ($) using scales::label_dollar(), apply theme_minimal(), and move the legend to the top.
+
+
+```{r}
+advanced_macro_data %>%
+    filter(year >= 2008) %>%
+    filter(country %in% c('China', 'Japan', 'South Korea')) %>%
+    drop_na(gov_debt_pct, fdi_bln) %>%
+    ggplot(aes(x = gov_debt_pct, y = fdi_bln, color = country)) +
+    geom_point() +
+    scale_y_continuous(labels = scales::label_dollar()) +
+    theme(legend.position = "top") +
+    theme_minimal()
+```
+
+
+
+
+# Review Question 4.3
+# Goal: Evaluate the trade-off between technology exports and economic growth/unemployment dynamics in North America and Asia prior to 2020.
+# Filtering: Filter for data before 2020 (year < 2020) for the United States, China, and South Korea. Drop missing values in tech_exports_bln and unemployment_rate.
+# Final Plot: A scatterplot mapping tech_exports_bln on the x-axis against unemployment_rate on the y-axis, mapped to color = country. Format the x-axis as dollar values using scale_x_continuous(labels = scales::label_dollar()), apply theme_classic(), and set custom axis/title labels with labs().
+
+
+```{r}
+advanced_macro_data %>%
+    filter(year < 2020) %>%
+    filter(country %in% c('United States', 'China', 'South Korea')) %>%
+    drop_na(tech_exports_bln, unemployment_rate) %>%
+    ggplot(aes(x = tech_exports_bln, y = unemployment_rate, color = country)) +
+    scale_x_continuous(labels = scales::label_dollar()) +
+    scale_y_continuous(labels = scales::label_percent(scale = 1)) +
+    #Decided that I would also make sure the unit we are placing in the y category is accurate since we are already doing the same for the x axis
+    geom_point() +
+    theme_classic() +
+    labs(
+        title = "Technology Exports to Unemployment Dynamics in North America and Asia",
+        x = "Tech Exports (Billions USD)",
+        y = "Unemployment Rate (%)"
+    )
+```
+
+# Review Question 5.1
+# Goal: Visualize inflation targets for Japan.Final Plot: A connected point-and-line graph (geom_line + geom_point) of inflation over time. Include a horizontal blue dashed baseline at 2% and a boxed label ("label") reading "BOJ Target" floating at $(2000, 2.5)$.
+
+```{r}
+advanced_macro_data %>%
+filter(country == 'Japan') %>%
+drop_na(year, inflation_rate) %>%
+ggplot(aes(x = year, y = inflation_rate)) +
+geom_line() +
+geom_point() +
+geom_hline(yintercept = 2.5, x = 2000, color = "red")
+```
+
+# Review Question 6.1
+# Goal: Execute a multi-stage pipeline on tech_exports_bln for China, Japan, and South Korea (round-trip pivot $\rightarrow$ 3-year rolling average calculation).Final Plot: A faceted line dashboard showing each country's smoothed tech export trend over time, featuring dollar signs on the y-axes and independent vertical scales.
+
+```{r}
+advanced_macro_data %>%
+filter(country %in% c('China', 'Japan', 'South Korea')) %>%
+group_by(country) %>%
+arrange(year) %>%
+mutate(threeyear = (tech_exports_bln + lag(tech_exports_bln) + lag(tech_exports_bln, 2)) / 3) %>%
+ungroup(year) %>%
+ggplot(aes(x = year, y = threeyear)) +
+geom_
+```
+
+# Not sure how to do smoothed lines must learn.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -431,18 +1126,18 @@ Question 8:
 
 Question 9: 
 
-Question 10: Take your wide dataset from Question 8 and pivot it back to a long format.
+Question 10: 
 
 Level 4: Advanced Visualizations & Scales
 Default ggplot settings are rarely presentation-ready for academic papers.
 
-Question 11: Create a faceted line plot showing gov_debt_pct over time for all countries. However, the y-axis scales must be "free" (independent for each mini-graph) so that countries with lower debt aren't flattened at the bottom of the chart.
+Question 11: 
 
-Question 12: Plot the fdi_bln of the United States over time. Modify the y-axis so the numbers format automatically with dollar signs (e.g., $100, not 100). Hint: You will need to explore the scales package, which works seamlessly with ggplot.
+Question 12: 
 
-Question 13: Create a scatterplot comparing inflation_rate (x) and unemployment_rate (y) for all countries. Remove all rows with NA values before plotting. Change the global theme of the plot to theme_minimal() and move the color legend to the bottom of the chart instead of the right side.
+Question 13: 
 
-Question 14: Plot unemployment_rate over time for South Korea. Add a vertical dashed line exactly at the year 1997. Add a text annotation next to this line that says "Asian Financial Crisis".
+Question 14: 
 
 Question 15: Convert the country column into a factor. Relevel this factor so that "South Korea" is explicitly first and "China" is second. Create a boxplot of tech_exports_bln across countries. Because of your factor manipulation, South Korea and China must appear as the first two boxes on the x-axis, regardless of alphabetical order.
 
