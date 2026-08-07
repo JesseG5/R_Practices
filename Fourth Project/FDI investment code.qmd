@@ -1077,23 +1077,165 @@ geom_hline(yintercept = 2.5, x = 2000, color = "red")
 ```{r}
 advanced_macro_data %>%
 filter(country %in% c('China', 'Japan', 'South Korea')) %>%
+select(year, country, tech_exports_bln) %>%
+pivot_wider(
+    names_from = "country",
+    values_from = "tech_exports_bln"
+) %>%
+pivot_longer(
+    cols = -year,
+    names_to = "country",
+    values_to = "tech_exports_bln"
+) %>%
 group_by(country) %>%
 arrange(year) %>%
 mutate(threeyear = (tech_exports_bln + lag(tech_exports_bln) + lag(tech_exports_bln, 2)) / 3) %>%
-ungroup(year) %>%
+ungroup() %>%
+drop_na(threeyear) %>%
 ggplot(aes(x = year, y = threeyear)) +
-geom_
+geom_line() +
+facet_wrap(~country, scales = "free_y") +
+scale_y_continuous(labels = scales::label_dollar())
 ```
 
 # Not sure how to do smoothed lines must learn.
 
 
+# Review Question 7.1
+ # Goal: Construct an annotated crisis analysis chart for the United States.Final Plot: A line plot of government debt (% of GDP) using theme_classic(). It must feature:A semi-transparent red shaded rectangle spanning 2007 to 2009.A vertical dashed reference line at 2008.A text annotation reading "Crisis Spike" positioned at $(2009.5, 80)$.
+
+```{r}
+advanced_macro_data %>%
+    filter(country == 'United States') %>%
+    ggplot(aes(x = year, y = gov_debt_pct)) +
+    geom_line() +
+    theme_classic() +
+    geom_vline(xintercept = 2008.5, linetype = "dashed", color = "red") +
+    annotate(
+        "rect",
+        xmin = 2007, xmax = 2009,
+        ymin = -Inf, ymax = Inf,
+        fill = "red",
+        alpha = 0.2
+    )
+```
+
+# Review Question 8.1
+# Goal: Analyze the relationship between government debt and foreign direct investment for East Asian economies since the 2008 Global Financial Crisis.
+# Filtering: Restrict the data to China, Japan, and South Korea for years 2008 and onward. Drop any rows with missing values in gov_debt_pct or fdi_bln.
+# Final Plot: A scatterplot mapping gov_debt_pct on the x-axis against fdi_bln on the y-axis, colored by country. Format the y-axis values as currency ($) using scales::label_dollar(), apply theme_minimal(), and move the legend to the top.
+
+```{r}
+advanced_macro_data %>%
+    filter(country %in% c('China', 'Japan', 'South Korea')) %>%
+    filter(year >= 2008) %>%
+    drop_na(gov_debt_pct, fdi_bln) %>%
+    ggplot(aes(x = fdi_bln, y = gov_debt_pct, color = country)) +
+    scale_y_continuous(labels = scales::label_dollar()) +
+    geom_point() +
+    theme_minimal() +
+    theme(legend.position = "Top")
+```
+
+
+# Review Question 9.1
+# Goal: Evaluate the trade-off between technology exports and economic growth/unemployment dynamics in North America and Asia prior to 2020.
+# Filtering: Filter for data before 2020 (year < 2020) for the United States, China, and South Korea. Drop missing values in tech_exports_bln and unemployment_rate.
+# Final Plot: A scatterplot mapping tech_exports_bln on the x-axis against unemployment_rate on the y-axis, mapped to color = country. Format the x-axis as dollar values using scale_x_continuous(labels = scales::label_dollar()), apply theme_classic(), and set custom axis/title labels with labs().
+
+
+```{r}
+advanced_macro_data %>%
+    filter(country %in% c('United States', 'China', 'South Korea')) %>%
+    filter(year < 2020) %>%
+    drop_na(tech_exports_bln, unemployment_rate) %>%
+    ggplot(aes(x = tech_exports_bln, y = unemployment_rate, color = country)) +
+    scale_x_continuous(labels = scales::label_dollar()) +
+    theme_classic() +
+    geom_point() +
+    scale_y_continuous(labels = scales::label_percent()) +
+    labs(
+        title = "Technology Exports and Unemployment Trade-Off",
+        x = "Tech Exports (Billions in USD)",
+        y = "Unemployment Rate (%)"
+    )
+```
+    
 
 
 
 
 
 
+
+# Review Question 10.1
+# Goal: Practice explicit grid normalization on implicit missing data.
+# Task: Filter advanced_macro_data for Taiwan, South Korea, and Japan. Pivot gov_debt_pct wide across countries to force R to create an explicit grid of all years and countries (filling missing year entries with NA). Immediately collapse the grid back into long format using pivot_longer().
+# Final Plot: Create a line plot of government debt over time for all three countries, mapping color = country. Use scale_y_continuous(labels = scales::label_percent(scale = 1)) to format the y-axis, and apply theme_minimal().
+
+
+
+```{r}
+advanced_macro_data %>%
+    filter(country %in% c('Taiwan', 'South Korea', 'Japan')) %>%
+    select(year, country, gov_debt_pct) %>%
+    pivot_wider(
+        names_from = "country",
+        values_from = "gov_debt_pct"
+    ) %>%
+    pivot_longer(
+        cols = -year,
+        names_to = "country",
+        values_to = "gov_debt_pct"
+    ) %>%
+    ggplot(aes(x = year, y = gov_debt_pct, color = country)) +
+    scale_y_continuous(labels = scales::label_percent(scale =1)) +
+    theme_minimal() +
+    geom_point()
+```
+
+
+
+
+
+
+
+
+
+# Review Question 11.1
+# Goal: Perform a round-trip reshape to prepare data for a rolling calculation.
+# Task: Take Technology Exports (tech_exports_bln) for China and the United States. Pivot the data wide so each country has its own column, then pivot it back to long format (names_to = "country", values_to = "tech_exports_bln"). Group by country to compute a 3-year rolling average on the restored long dataset.
+# Final Plot: Plot this rolling average over time using geom_line(), faceted by country (facet_wrap(~ country, scales = "free_y")) with formatted dollar values (scales::label_dollar()) on the y-axes.
+
+
+
+```{r}
+advanced_macro_data %>%
+    filter(country %in% c('China', 'United States')) %>%
+    select(year, country, tech_exports_bln) %>%
+    pivot_wider(
+        names_from = "country",
+        values_from = "tech_exports_bln"
+    ) %>%
+    pivot_longer(
+        cols = -year,
+        names_to = "country",
+        values_to = "tech_exports_bln"
+    ) %>%
+    arrange(year) %>%
+    group_by(country) %>%
+    mutate(threeyear = (tech_exports_bln + lag(tech_exports_bln) + lag(tech_exports_bln, 2)) /3) %>%
+    ungroup(country) %>%
+    ggplot(aes(x = year, y = threeyear)) +
+    geom_line() +
+    facet_wrap(~country, scales = "free_y") +
+    scale_y_continuous(labels = scales::label_dollar())
+```
+
+
+
+# Question 15
+# Convert the country column into a factor. Relevel this factor so that "South Korea" is explicitly first and "China" is second. Create a boxplot of tech_exports_bln across countries. Because of your factor manipulation, South Korea and China must appear as the first two boxes on the x-axis, regardless of alphabetical order.
 
 
 
@@ -1139,7 +1281,7 @@ Question 13:
 
 Question 14: 
 
-Question 15: Convert the country column into a factor. Relevel this factor so that "South Korea" is explicitly first and "China" is second. Create a boxplot of tech_exports_bln across countries. Because of your factor manipulation, South Korea and China must appear as the first two boxes on the x-axis, regardless of alphabetical order.
+Question 15: 
 
 Level 5: String Manipulation & Conditional Logic
 Real-world data is messy. You must learn to clean text and apply multiple logical conditions simultaneously.
