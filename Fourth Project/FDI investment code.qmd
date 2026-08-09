@@ -1165,9 +1165,6 @@ advanced_macro_data %>%
 
 
 
-
-
-
 # Review Question 10.1
 # Goal: Practice explicit grid normalization on implicit missing data.
 # Task: Filter advanced_macro_data for Taiwan, South Korea, and Japan. Pivot gov_debt_pct wide across countries to force R to create an explicit grid of all years and countries (filling missing year entries with NA). Immediately collapse the grid back into long format using pivot_longer().
@@ -1237,71 +1234,286 @@ advanced_macro_data %>%
 # Question 15
 # Convert the country column into a factor. Relevel this factor so that "South Korea" is explicitly first and "China" is second. Create a boxplot of tech_exports_bln across countries. Because of your factor manipulation, South Korea and China must appear as the first two boxes on the x-axis, regardless of alphabetical order.
 
+```{r}
+advanced_macro_data %>%
+    # First we must convert the country category as a whole to a factor rather than a normal text string
+    mutate(country = factor(country)) %>%
+    mutate(country = stats::relevel(country, ref = "China")) %>%
+    mutate(country = stats::relevel(country, ref = "South Korea")) %>%
+    # We must put South Korea last because that command simply immediately moves whatever you put down to the top
+    ggplot(aes(x = country, y = tech_exports_bln)) +
+    geom_boxplot() +
+    scale_y_continuous(labels = scales::label_dollar()) +
+    theme_minimal()
+```
+
+
+# Question 15.1 
+# Goal: Practice custom categorical ordering for a bar chart of foreign direct investment.
+# Task: Convert country into a factor. Relevel the factor using forcats::fct_relevel() so that "United States" is first and "Japan" is second. Drop any NA values in fdi_bln.
+# Final Plot: Create a boxplot of fdi_bln across countries. United States and Japan must render as the first two items on the x-axis. Format the y-axis with currency labels (scales::label_dollar()).# 
+
+
+```{r}
+advanced_macro_data %>%
+    mutate(country = factor(country)) %>%
+    mutate(country = stats::relevel(country, ref = "Japan")) %>%
+    mutate(country = stats::relevel(country, ref = "United States")) %>%
+    drop_na(fdi_bln) %>%
+    ggplot(aes(x = country, y = fdi_bln)) +
+    scale_y_continuous(labels = scales::label_dollar()) +
+    geom_boxplot() +
+    theme_minimal()
+```
+
+# Question 15.2
+# Goal: Task: Filter the dataset for China, South Korea, Japan, and the United States. Convert country to a factor with levels explicitly ordered as: c("South Korea", "Japan", "China", "United States").
+# Final Plot: Create a faceted line plot (geom_line()) of inflation_rate over time, faceted by country (facet_wrap(~ country)). Because of your factor levels, the panels must display in top-left to bottom-right order following your specified country order rather than alphabetical order.
+
+```{r}
+advanced_macro_data %>%
+    filter(country %in% c('China', 'United States', 'Japan', 'South Korea')) %>%
+    mutate(country = factor(country, levels = c("South Korea", "Japan", "China", "United Staes"))) %>%
+    drop_na(inflation_rate) %>%
+    ggplot(aes(x = year, y = inflation_rate)) +
+    facet_wrap(~ country) +
+    geom_line()
+```
 
 
 
 
+# Question 16 Look at the analyst_note column. It is filled with random spaces, varying capitalizations, and underscores. Use the stringr package (part of tidyverse) to clean this column: make everything lowercase, trim all white space from the edges, and replace all underscores with a standard space.
+
+```{r}
+advanced_macro_data %>%
+    mutate(
+        str_replace_all(analyst_note, "_", " "),
+        str_to_lower(analyst_note),
+        str_trim(analyst_note)
+    )
+```
+
+# Question 16.1
+# Goal: Clean up the country column where text entry errors have introduced inconsistent capitalization, leading/trailing spaces, and hyphens instead of spaces.
+# Task: Take advanced_macro_data and clean the country column:
+# Trim all leading and trailing whitespace using str_trim().
+# Replace any hyphens ("-") with standard spaces using str_replace_all().
+# Convert all text to title case using str_to_title() (e.g., "south korea" or "SOUTH KOREA" becomes "South Korea").
+# Final Plot: Filter for United States, China, and South Korea using your newly cleaned country column, and create a basic line chart of unemployment_rate over year, mapping color = country.
 
 
 
 
+```{r}
+advanced_macro_data %>%
+    mutate(
+        country = str_replace_all(country, "-", " "),
+        country = str_trim(country),
+        country = str_to_title(country)
+    ) %>%
+    filter(country %in% c('United States', 'China', 'South Korea')) %>%
+    ggplot(aes(x = year, y = unemployment_rate, color = country)) +
+    geom_line() +
+    # going to add in a rectangle to practice all concepts
+    annotate(
+        "rect",
+        xmin = 2000, xmax = 2002,
+        ymin = -Inf, ymax = Inf,
+        fill = "red",
+        alpha = 0.2
+    ) +
+    annotate(
+        "text",
+        x = 2003,
+        y = 7.5,
+        label = "The Great Data Purge",
+        color = "red",
+        hjust = 0
+    )
+```
 
-Question 2: 
 
-Question 3: 
+# Question 16.2
+# Task: In advanced_macro_data, process the analyst_note column:
+# Convert all notes to uppercase using str_to_upper().
+# Replace all full stops/periods (".") or underscores ("_") with spaces using str_replace_all().
+# Strip any excess leading/trailing whitespace with str_trim().
+# Filter out any rows where analyst_note is missing (NA).
+# Final Plot: Group by the cleaned analyst_note and calculate the average fdi_bln. Create a bar chart (geom_col()) mapping analyst_note on the x-axis and average FDI on the y-axis. Format the y-axis labels using scales::label_dollar().
 
-Question 4: 
 
-Level 2: Advanced Window Functions (Time Series)
-In economics, what happened yesterday is just as important as what is happening today. You will need to research window functions in dplyr that look at previous rows.
+```{r}
+advanced_macro_data %>%
+    mutate(
+        analyst_note = str_to_upper(analyst_note) %>%
+        str_replace_all("\\.", " ") %>%
+        str_replace_all("_", " ") %>%
+        str_trim()
+    ) %>%
+    drop_na(analyst_note) %>%
+    group_by(analyst_note) %>%
+    mutate(avgfdi_bln = mean(fdi_bln)) %>%
+    ggplot(aes(x = analyst_note, y = avgfdi_bln)) +
+    geom_col(fill = "steelblue") +
+    scale_y_continuous(labels = scales::label_dollar()) +
+    theme_minimal()
+```
 
-Question 5: .
 
-Question 6: 
 
-Question 7: 
+# Question 16.3
+# Goal: Clean messy status codes and run a summarized time series analysis.
+# Task: In advanced_macro_data, clean the analyst_note column:
+# Convert all notes to lowercase using str_to_lower().
+# Replace all occurrences of forward slashes ("/") and hyphens ("-") with standard spaces using str_replace_all().
+# Trim any edge spaces using str_trim().
+# Filter out missing values (NA) in analyst_note and restrict the data to years 2010 and onward.
 
-Level 3: Reshaping Data (Pivoting)
-Data rarely comes in the exact shape you need for plotting or regression. You need to master changing data from "long" format to "wide" format, and vice versa.
 
-Question 8: 
 
-Question 9: 
+```{r}
+advanced_macro_data %>%
+    mutate(
+        analyst_note = str_to_lower(analyst_note),
+    analyst_note = str_replace_all(analyst_note, "/", " "),
+    analyst_note = str_replace_all(analyst_note, "-", " "),
+    analyst_note = str_trim(analyst_note)
+    ) %>%
+    drop_na(analyst_note) %>%
+    filter(year >= 2010) %>%
+    group_by(year, analyst_note) %>%
+    summarize(median_tech = median(tech_exports_bln, na.rm = TRUE), .groups = "drop) %>%
+    ggplot(aes(x = year, y = median_tech, color = analyst_note)) +
+    geom_line()
+```
 
-Question 10: 
 
-Level 4: Advanced Visualizations & Scales
-Default ggplot settings are rarely presentation-ready for academic papers.
+# Question 16.4
+# Goal: Fix formatting errors across country names and reorder x-axis categories using factors.
+# Task: Take advanced_macro_data and clean the country column:
+# Replace any numbers or special symbols like underscores ("_") with spaces using str_replace_all().
+# Strip all leading and trailing whitespace using str_trim().
+# Standardize to title case using str_to_title().
+# Convert country to a factor and explicitly set the levels in this order: c("China", "South Korea", "Japan", "United States").
+# Final Plot: Create a boxplot (geom_boxplot()) of gov_debt_pct mapped on the y-axis across country on the x-axis. Ensure the boxes follow your custom factor order rather than alphabetical order.
 
-Question 11: 
+```{r}
+advanced_macro_data %>%
+    mutate(
+        country = str_replace_all(country, "_", " "),
+        country = str_trim(country),
+        country = str_to_title(country)
+    ) %>%
+    mutate(country = factor(country, levels = c("China", "South Korea", "Japan", "United States"))) %>%
+    group_by(country) %>%
+    ggplot(aes(x = country, y = gov_debt_pct)) +
+    geom_boxplot()
+```
 
-Question 12: 
 
-Question 13: 
 
-Question 14: 
+# Question 17 Filter the dataset to keep only the rows where the analyst_note contains the word "crisis" or "recession" (ignoring case).
 
-Question 15: 
+```{r}
+advanced_macro_data %>%
+    filter(str_detect(analyst_note, regex("crisis|recession", ignore_case = TRUE)))
+```
 
-Level 5: String Manipulation & Conditional Logic
-Real-world data is messy. You must learn to clean text and apply multiple logical conditions simultaneously.
 
-Question 16: Look at the analyst_note column. It is filled with random spaces, varying capitalizations, and underscores. Use the stringr package (part of tidyverse) to clean this column: make everything lowercase, trim all white space from the edges, and replace all underscores with a standard space.
+# Question 17.1
+# Goal: Detect multiple key terms indicating specific economic policy interventions using case-insensitive regex.
+# Task: Take advanced_macro_data and filter the dataset to keep only the rows where analyst_note contains either the word "stimulus" or "tariff" (ignoring case sensitivity). Drop any rows where analyst_note is NA.
+# Final Plot: Create a scatterplot (geom_point()) mapping year on the x-axis and gov_debt_pct on the y-axis, colored by country.
 
-Question 17: Filter the dataset to keep only the rows where the analyst_note contains the word "crisis" or "recession" (ignoring case).
 
-Question 18: Create a new categorical variable called economic_era. If the year is before 1990, label it "Cold War". If the year is between 1990 and 2008, label it "Global Integration". If the year is after 2008, label it "Post-Crisis". Calculate the average gov_debt_pct for the US across these three eras.
+```{r}
+advanced_macro_data %>%
+  drop_na(analyst_note) %>%
+  filter(str_detect(analyst_note, regex("crisis|recession", ignore_case = TRUE))) %>%
+  ggplot(aes(x = year, y = gov_debt_pct, color = country)) +
+  geom_point()
+```
 
-Question 19: In a single pipeline, calculate the mean for all numeric columns in the dataset (except year), grouped by country. Hint: Look up how to use the across() function inside summarize().
 
-Question 20 (The Master Pipeline): Write one continuous pipeline that does the following in order:
+# Question 17.2
+# Goal: Combine string detection with categorical filtering for target regional analysis.
+# Task: Filter advanced_macro_data to keep rows where country is in "China", "South Korea", or "Japan", AND analyst_note contains the word "export" or "trade" (ignoring case).
+# Final Plot: Calculate the median tech_exports_bln grouped by year and country. Build a line plot (geom_line()) of median tech exports over time, faceted by country using facet_wrap(~ country, scales = "free_y"). Format y-axis values with scales::label_dollar().
 
-Drops any rows with NA in inflation_rate.
+```{r}
+advanced_macro_data %>%
+    filter(country %in% c("China", "South Korea", "Japan")) %>%
+    drop_na(analyst_note) %>%
+    filter(str_detect(analyst_note, regex("export|trade", ignore_case =TRUE))) %>%
+    group_by(year, country) %>%
+    summarize(median = median(tech_exports_bln, na.rm = TRUE, .groups = "drop")) %>%
+    ggplot(aes(x = year, y = median)) +
+    geom_line() +
+    facet_wrap(~ country, scales = "free_y") +
+    scale_y_continuous(labels = scales::label_dollar())
+```
 
-Filters for years greater than 2000.
 
-Calculates a new column called debt_to_fdi_ratio (gov_debt_pct / fdi_bln).
+# Question 17.3
+# Goal: Filter using regex patterns alongside string transformations and factor ordering.
+# Clean analyst_note by converting all text to lower case and trimming edge spaces using str_to_lower() and str_trim().
+# Filter the dataset to retain only rows where analyst_note contains "inflation" or "rate".
+# Relevel country as a factor so that "United States" is explicitly first and "China" is second.
+# Final Plot: Create a boxplot (geom_boxplot()) mapping country on the x-axis against inflation_rate on the y-axis. Ensure the x-axis boxes reflect your factor ordering.
 
-Groups by country to find the maximum debt_to_fdi_ratio for each nation.
 
-Pipes directly into a ggplot bar chart visualizing this maximum ratio, sorted from highest to lowest.
+
+```{r}
+advanced_macro_data %>%
+drop_na(analyst_note) %>%
+mutate(
+    analyst_note = str_to_lower(analyst_note),
+    analyst_note = str_trim(analyst_note)
+) %>%
+filter(str_detect(analyst_note, regex("inflation|rate", ignore_case = TRUE ))) %>%
+mutate(country = factor(country, levels = c("China", "United States"))) %>%
+ggplot(aes(x = country, y = inflation_rate)) +
+geom_boxplot()
+```
+
+
+
+# Question 18 Create a new categorical variable called economic_era. If the year is before 1990, label it "Cold War". If the year is between 1990 and 2008, label it "Global Integration". If the year is after 2008, label it "Post-Crisis". Calculate the average gov_debt_pct for the US across these three eras.
+
+
+```{r}
+advanced_macro_data %>%
+    filter(country %in% c("United States", "US")) %>%
+    mutate(
+        economic_era = case_when(
+            year < 1990 ~ "Cold War",
+            year >= 1990 & year <= 2008 ~ "Global Integration",
+            year > 2008 ~ "Post-Crisis"
+        )
+    ) %>%
+    group_by(economic_era) %>%
+    summarize(avg_gov_debt = mean(gov_debt_pct, na.rm = TRUE),
+    .groups = "drop"
+    )
+```
+
+
+# Question 18.1
+# Goal: Categorize historical periods based on inflation levels and compare average government spending across countries.Task: Take advanced_macro_data:Create a new variable named inflation_severity using case_when():If inflation_rate is strictly less than $2.0$, label it "Low".If inflation_rate is between $2.0$ and $5.0$ (inclusive), label it "Moderate".If inflation_rate is strictly greater than $5.0$, label it "High".Drop any rows where inflation_severity or gov_spending_pct is NA.Final Summary: Group by country and inflation_severity, then calculate the average gov_spending_pct (mean()). Ensure your final summary uses .groups = "drop".
+
+```{r}
+advanced_macro_data %>%
+    mutate(
+        inflation_severity = case_when(
+            inflation_rate < 2.0 ~ "Low",
+            inflation_rate >= 2.0 & inflation_rate <= 5.0 ~ "Moderate",
+            inflation_rate > 5.0 ~ "High"
+        )
+    ) %>%
+    drop_na(inflation_severity, gov_spending_pct) %>%
+    group_by(country, inflation_severity) %>%
+    summarize(meandbt = mean(gov_spending_pct, na.rm = TRUE),
+    .groups = "drop"
+    )
+```
